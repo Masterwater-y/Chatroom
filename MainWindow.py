@@ -1,10 +1,13 @@
 from tkinter import *
 from tkinter import messagebox
+from tkinter import filedialog
 import time
 import os
+from PIL import ImageTk as itk
+from PIL import Image as Img
 
 class MainWindow():
-	def __init__(self,username,send_func,refresh_func,close_func):
+	def __init__(self,username,send_func,refresh_func,close_func,send_pic_func):
 		self.main_window=None#=Tk()不直接写避免出现多个窗口
 		self.online_list=None
 		self.send_func=send_func
@@ -16,6 +19,9 @@ class MainWindow():
 		self.curtag='#Group#' #current target
 		self.title_var=None
 		self.unread={}
+		self.send_pic_func=send_pic_func
+		self.img=[]
+		self.num=-1
 	def show(self):
 		self.main_window=Tk()
 		self.main_window.configure(bg='#333333')
@@ -40,7 +46,8 @@ class MainWindow():
 		self.online_list['yscrollcommand'] = online_list_bar.set
 
 		self.messagebox=Text(self.main_window,width=97,state=DISABLED)  #消息记录框 常态下无法输入
-		self.messagebox_history(0,0)
+		self.messagebox_history(self.curtag)
+
 		self.messagebox.grid(row=1,column=1,sticky=N+S,rowspan=2)
 		messagebox_bar=Scrollbar(self.main_window)
 		messagebox_bar['command']=self.messagebox.yview
@@ -48,21 +55,24 @@ class MainWindow():
 		messagebox_bar.grid(row=1,column=1,stick=E+N+S,rowspan=2)
 
 		self.input_box=Text(self.main_window,width=97,height=2)#输入框 
-		self.input_box.grid(row=3,column=1,sticky=N+S,pady=(10,0))
+		self.input_box.grid(row=3,column=1,sticky=N+S,pady=(40,0))
 		input_box_bar=Scrollbar(self.main_window)
 		input_box_bar['command']=self.input_box.yview
 		self.input_box['yscrollcommand']=input_box_bar.set
-		input_box_bar.grid(row=3,column=1,stick=E+N+S,pady=(10,0))
+		input_box_bar.grid(row=3,column=1,stick=E+N+S,pady=(40,0))
 		btn_frame=Frame(self.main_window,bg='#333333')
 		send_btn=Button(btn_frame,text='发送',bg='lightgreen',width=5,font=('黑体',14),command=self.send_func).grid(row=0,column=0,sticky=W,padx=(50,100))
 		send_btn=Button(btn_frame,text='清空',bg='red',width=5,font=('黑体',14),command=self.input_box_clean).grid(row=0,column=1,sticky=E,padx=(30,0))
-		btn_frame.grid(row=4,column=1,sticky=E+W)  #
+		btn_frame.place(x=200,y=530)  
+
+		send_pic_btn=Button(self.main_window,text='发送图片',command=self.send_pic_func).place(x=200,y=370)
+		clean_rec_btn=Button(self.main_window,text='清空聊天记录',command=self.messagebox_clean).place(x=300,y=370)
 
 		refresh_btn=Button(self.main_window,text='刷新在线列表',command=self.refresh_func).grid(row=5,column=0)
 		self.messagebox.tag_config('green',foreground='green') #foreground字体颜色 background填充背景颜色
 		self.messagebox.tag_config('blue',foreground='blue')
 		self.online_list.bind('<Double Button-1>',self.change_target)
-		
+		self.main_window.bind('<Return>',self.bind_send)
 		self.main_window.mainloop()
 
 	def refresh(self,name):#刷新在线列表
@@ -79,9 +89,25 @@ class MainWindow():
 				names=names+'('+str(self.unread[names])+')'
 			self.online_list.insert(END,names)#在列表末尾插入names
 
+	def messagebox_clean(self):
+		user=self.username
+		target=self.curtag
+		file_name=self.getfile(user,target)
+		with open(file_name,'w',encoding='utf-8') as record:
+			pass
+		self.messagebox_history(target)
 
-	def change_target(self,event):# bind会返回event
-		pos=self.online_list.curselection()[0]#返回的是元组
+
+
+
+	def bind_send(self,event):
+		self.send_func()
+
+	def get_pic(self):
+		path=filedialog.askopenfilename()
+		return path,self.curtag
+
+	def deal_repeat(self,pos):
 		origin=self.online_list.get(pos)
 		pos1=-1
 		for i in range(len(origin)-1,-1,-1):
@@ -94,19 +120,19 @@ class MainWindow():
 			self.curtag=origin
 		else:
 			self.curtag=origin[0:pos1]
+
+	def change_target(self,event):# bind会返回event
+		pos=self.online_list.curselection()[0]#返回的是元组
+		self.deal_repeat(pos)
 		if self.curtag==self.username:
 			return
 		self.title_var.set(self.curtag)
-		path=self.getfile(1,self.username,self.curtag)
+		path=self.getfile(self.username,self.curtag)
 		flag=os.path.isfile(path)
 		if not flag:
 			with open(path,'a+',encoding='utf-8') as record:
 				pass
-		if self.curtag=='#Group#':
-			_type=0
-		else:
-			_type=1
-		self.messagebox_history(_type,self.curtag)
+		self.messagebox_history(self.curtag)
 		self.unread[self.curtag]=0
 		self.refresh_func()
 		print(self.curtag)
@@ -115,32 +141,25 @@ class MainWindow():
 		print(type(self.online_list))
 		self.input_box.delete(0.0,END) # %d.%d表示x行y列 ，可以加''   表示从输入框的(0,0)处到末尾
 		
-	def getfile(self,_type,user,target):
+	def getfile(self,user,target):
 		file_name='data\\record\\'+user+'\\'
-		if _type==0:
-			file_name+='group.txt'
-		elif _type==1:
-			file_name+=target+'.txt'
+		file_name+=target+'.txt'
 		return file_name
 
-	def message_box_recv(self,user,content,_type,sender):#消息记录框新增内容
+	def message_box_recv(self,target,content,sender):#消息记录框新增内容
 		#self.messagebox.config(state=NORMAL)#先将消息记录框从只读状态变为可修改状态
 		head=sender+'  '+time.strftime("%Y-%m-%d %X")#一个显示当前日期的方法，可以百度time.strftime
-		file_name=self.getfile(_type,self.username,user)
+		file_name=self.getfile(self.username,target)
 		with open(file_name,'a',encoding='utf-8') as record:
 			record.write(sender+' '+head+'\n')
-			record.write(' '+content)
+			record.write(' '+content+'\n')
 		now=self.curtag
-		if now=='#Group#' and _type==0:
-			self.messagebox_history(_type,now)
-			return
-		elif now==user and _type==1:
-			self.messagebox_history(_type,now)
-			print(self.unread)
+		if now==target:
+			self.messagebox_history(now)
 			return
 		if sender==self.username:
 			return
-		if _type==0:
+		if target=='#Group#':
 			self.unread.setdefault('#Group#',0)
 			self.unread['#Group#']+=1
 			return
@@ -148,20 +167,30 @@ class MainWindow():
 		self.unread[sender]=self.unread[sender]+1
 		print(self.unread)
 
-
-
-	def messagebox_history(self,_type,target):
+	def messagebox_history(self,target):
 		self.messagebox.config(state=NORMAL)
 		self.messagebox.delete(0.0,END)
 		user=self.username
-		file_name=self.getfile(_type,user,target)
+		file_name=self.getfile(user,target)
 		with open(file_name,'r',encoding='utf-8') as record:
 			for content in record:
 				pos=content.find(' ',0)
 				user=content[0:pos]
-				content=content[pos+1:-1]
+				content=content[pos+1:].rstrip('\n')
+				#print('--------------------')
+				##print('user=',user)
+				#print('content:',content)
+				flag=os.path.exists(content)
+				#print('flag=',flag)'''
 				if pos==0:
-					self.messagebox.insert(END,content+'\n')
+					if flag:
+						self.num=self.num+1
+						self.img.append(itk.PhotoImage(file=content))
+						print(content)
+						self.messagebox.image_create(END,image=self.img[self.num])#img用全局变量，否则图片显示空白，且每张图都要单独用一个变量
+						self.messagebox.insert(END,'\n')
+					else:
+						self.messagebox.insert(END,content+'\n')
 					continue
 				if user==self.username:#如果是本人发的就是绿色，否则是蓝色
 					self.messagebox.insert(END,content+'\n','green')
@@ -173,6 +202,8 @@ class MainWindow():
 	def send_name(self):
 		return self.curtag
 
+	def get_name(self):
+		return self.username
 	def getinput(self):#获取消息框内容
 		content=self.input_box.get(0.0,END)
 		if content=='' or content=='\n':

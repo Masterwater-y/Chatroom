@@ -12,7 +12,7 @@ import os
 
 def open_mainwindow(user):
 	global main_window
-	main_window=MainWindow(user,send_message,refresh,close_main_window) #创建一个主界面的实例
+	main_window=MainWindow(user,send_message,refresh,close_main_window,send_pic_func) #创建一个主界面的实例
 	Thread(target=recv_data).start() #为当前主界面接收数据新开一个线程
 	main_window.show() #显示主界面
 
@@ -39,16 +39,21 @@ def mkdir(path):
 	if not isExist:
 		os.makedirs(path)
 
+def loading(user):
+	path=os.path.join('data','file_recv',user)+'\\'
+	mkdir(path)
+	path='data\\record\\'+user+'\\'
+	mkdir(path)
+	with open(path+'group.txt','a+',encoding='utf-8') as record:
+		pass
+
 def login():#登录按钮绑定的函数
 	user,key=login_window.getinput()# 获取登录窗口输入框的内容
 	print(user+'   '+key)
 	result=client.check_login(user,key)
 	#print(result)
 	if result=='0':#验证成功
-		path='data\\record\\'+user+'\\'
-		mkdir(path)
-		with open(path+'group.txt','a+',encoding='utf-8') as record:
-			pass
+		loading(user)
 		login_window.close()#先关闭登录窗口 再开mainwindow，否则无法关闭登录窗口
 		open_mainwindow(user) #打开主界面的函数
 	elif result=='1':
@@ -57,6 +62,25 @@ def login():#登录按钮绑定的函数
 		messagebox.showerror(title="错误", message="账号已登录")
 	else:
 		messagebox.showerror(title="错误", message="未知错误")
+
+def resize_image(infile, x_s=400):
+	filename=os.path.basename(infile)
+	img = Img.open(infile)
+	x, y = img.size
+	if x<x_s:
+		return(infile,True)
+	y_s = int(y * x_s / x)
+	out = img.resize((x_s, y_s), Img.ANTIALIAS)
+	outfile =os.path.join('data',filename)
+	out.save(outfile)
+	return(outfile,False)
+
+def send_pic_func():
+	path,target=main_window.get_pic()
+	paths,flag=resize_image(path)
+	client.send_pic(paths,target)
+	if not flag:
+		os.remove(paths)
 
 def recv_data(): #客户端从服务器接收数据函数
 	time.sleep(1)#等待主界面渲染好再接受数据，否则调用主界面的函数可能会出错
@@ -69,10 +93,10 @@ def recv_data(): #客户端从服务器接收数据函数
 			print('type='+_type)
 			if _type=='0': #接收的是群聊消息
 				print('接受到服务器发来的消息')
-				user=client.recv_string()
+				target=client.recv_string()#当前消息的通话对象
 				content=client.recv_string()
-				sender=user
-				main_window.message_box_recv(user,content,0,sender)#收到消息后修改消息记录框
+				sender=client.recv_string()#发送者
+				main_window.message_box_recv(target,content,sender)#收到消息后修改消息记录框
 				client.refresh_req()
 			elif _type=='1':#接收的是刷新在线列表
 				print('refresh')
@@ -82,11 +106,21 @@ def recv_data(): #客户端从服务器接收数据函数
 					name.append(client.recv_string())
 				main_window.refresh(name)
 			elif _type=='2':
-				user=client.recv_string()
+				target=client.recv_string()#当前消息的通话对象
 				content=client.recv_string()
-				sender=client.recv_string()
-				main_window.message_box_recv(user,content,1,sender)
+				sender=client.recv_string()#发送者
+				main_window.message_box_recv(target,content,sender)
 				client.refresh_req()
+			elif _type=='#Picture#':
+				print('here')
+				sender=client.recv_string()
+				target=client.recv_string()
+				user=main_window.get_name()
+				content=client.recv_pic(user,target)
+				print(content)
+				main_window.message_box_recv(target,content,sender)
+				client.refresh_req()
+
 		except Exception as e: #出现任何错误
 			print('接受服务器消息错误:'+str(e))#！！！不加break退出会崩溃
 			break

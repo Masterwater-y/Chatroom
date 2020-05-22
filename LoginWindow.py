@@ -47,6 +47,7 @@ class LoginWindow: #类的定义
 		#react=self.login_window.register(self.clean_entry)
 		user_entry=Entry(self.login_window,textvariable=self.user,width=30).place(x=211,y=150,height=30)
 		key_entry=Entry(self.login_window,textvariable=self.key,show='*',width=30).place(x=211,y=207,height=30)
+		self.login_window.bind('<Return>',self.bind_login)
 		login_btn=Button(self.login_window,image=btn_img,borderwidth=0,highlightthickness=0,command=self.login_func).place(x=215,y=281)
 		register_btn=Button(self.login_window,image=reg_img,borderwidth=0,highlightthickness=0,command=self.reg_func).place(x=431,y=154)
 		self.login_window.mainloop()
@@ -57,6 +58,8 @@ class LoginWindow: #类的定义
 		print("Entry:"+content)
 		exit(True)'''
 
+	def bind_login(self,event):
+		self.login_func()
 	def getinput(self): #返回账号和密码
 		return self.user.get(), self.key.get()
 	def close(self):

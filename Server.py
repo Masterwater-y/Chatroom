@@ -1,6 +1,8 @@
 import socket
 from threading import Thread
 import math
+import struct
+import os
 
 online_user=[]#list  dont use tuple 在线的socket
 sock_user={}#字典 存储socket对应的名字
@@ -27,7 +29,7 @@ def check_login(username,key):#服务器检查登录
 	user=username
 	i=0
 	print('in check_login')
-	with open('data\\user.in','r',encoding='utf-8') as data:
+	with open('server\\data\\user.in','r',encoding='utf-8') as data:
 		for content in data:
 			content=content.replace('\n','')
 			i=i+1
@@ -42,7 +44,18 @@ def check_login(username,key):#服务器检查登录
 			is_user=not is_user
 	return(False)
 
+#def recv_pic(sock):
+#	head_size=struct.calcsize('128sl')#文件头大小 128个byte表示文件名 l表示integer
+#	package=sock.recv(head_size)
+#	filename,filesize=struct.unpack('128sl',package)
+#	pass
 
+def loading(sock):
+	path=os.path.join('server','data',sock_user[sock])
+	print('create file')
+	isExist=os.path.exists(path)
+	if not isExist:
+		os.makedirs(path)
 
 def handle_login(sock): #处理登录请求
 	print('ready to check the user and key')
@@ -59,6 +72,7 @@ def handle_login(sock): #处理登录请求
 			user_sock[user]=sock 
 			send_string(sock,'0')#0为成功
 			handle_onlinelist()#更新在线列表
+			loading(sock)
 		else:
 			send_string(sock,'2')#已登录
 	else:
@@ -69,7 +83,7 @@ def handle_register(sock):#处理注册请求
 	key=recv_string(sock)
 	is_user=True
 	Flag=True
-	with open('data\\user.in','r',encoding='utf-8') as data:
+	with open('server\\data\\user.in','r',encoding='utf-8') as data:
 		for content in data:
 			content=content.rstrip('\n')
 			if is_user and content==user:
@@ -77,7 +91,7 @@ def handle_register(sock):#处理注册请求
 				send_string(sock,'1')
 				return#已被注册
 			is_user=not is_user
-	with open('data\\user.in','a',encoding='utf-8') as data:
+	with open('server\\data\\user.in','a',encoding='utf-8') as data:
 		data.write(user+'\n')
 		data.write(key+'\n')
 	send_string(sock,'0')
@@ -91,23 +105,50 @@ def handle_sending(sock):#处理发送消息请求，即服务器把收到的信
 	for user in online_user:#遍历在线的socket
 		send_string(user,'0')#发送0告知客户端后面要接收消息数据
 		print('sending tips 0')
-		send_string(user,sock_user[sock])#发送消息来源人
+		send_string(user,'#Group#')#发送消息来源人
 		send_string(user,content)#发送内容
+		send_string(user,sock_user[sock])
 
 def handle_private_send(sock):
 	user=sock_user[sock]
 	target=user_sock[recv_string(sock)]
 	content=recv_string(sock)
 	send_string(target,'2')
-	send_string(target,user)
+	send_string(target,user)#当前通话对象
 	send_string(target,content)
-	send_string(target,user)
+	send_string(target,user)#发送者
 	send_string(sock,'2')
-	send_string(sock,sock_user[target])
+	send_string(sock,sock_user[target])#当前通话对象
 	send_string(sock,content)
-	send_string(sock,user)
+	send_string(sock,user)#发送者
 
-
+def recv_pic(sock):
+	target=recv_string(sock)
+	filename=recv_string(sock)#不含路径的文件名
+	filesize=int(recv_string(sock))
+	file_route=os.path.join('server','data',sock_user[sock],filename)#服务器中存放的地址
+	i=0
+	while os.path.exists(file_route):
+		i+=1
+		for j in range(len(file_route)-1,-1,-1):
+			if file_route[j]=='.':
+				break
+		file_route=file_route[0:j]+'('+str(i)+')'+file_route[j:]
+	print ('file new name is %s, filesize is %s' %(file_route,filesize))
+	recvd_size = 0 #定义接收了的文件大小
+	file = open(file_route,'wb')
+	print ('stat receiving...')
+	while not recvd_size == filesize:
+		if filesize - recvd_size > 1024:
+			rdata = sock.recv(1024)
+			recvd_size += len(rdata)
+		else:
+			rdata = sock.recv(filesize - recvd_size) 
+			recvd_size = filesize
+		file.write(rdata)
+	file.close()
+	return target,filename,filesize,file_route
+	print ('receive done')
 
 def handle_onlinelist():#处理更新在线列表请求
 	num=str(len(online_user))
@@ -119,10 +160,58 @@ def handle_onlinelist():#处理更新在线列表请求
 			send_string(user,sock_user[name])
 
 
+def handle_pic(sock):
+	print('handling Picture')
+	sender=sock_user[sock]
+	targets,filename,filesize,file_route=recv_pic(sock)
+	filesize=str(filesize)#转为str传输
+	print(targets,' ',filename,' ',filesize,' ',file_route)
+	if targets=='#Group#':
+		for user in online_user:
+			print('here')
+			send_string(user,'#Picture#')
+			send_string(user,sender)
+			send_string(user,'#Group#')
+			send_string(user,filename)
+			send_string(user,filesize)
+			file=open(file_route,'rb')
+			while True:
+				filedata=file.read(1024)
+				if not filedata:
+					break
+				user.sendall(filedata)
+			file.close()
+	else:
+		target=user_sock[targets]
+		send_string(target,'#Picture#')
+		send_string(target,sender)
+		send_string(target,sock_user[sock])
+		send_string(target,filename)
+		send_string(target,filesize)
+		file=open(file_route,'rb')
+		while True:
+			filedata=file.read(1024)
+			if not filedata:
+				break
+			target.sendall(filedata)
+		file.close()
+		send_string(sock,'#Picture#')
+		send_string(sock,sender)
+		send_string(sock,targets)
+		send_string(sock,filename)
+		send_string(sock,filesize)
+		file=open(file_route,'rb')
+		while True:
+			filedata=file.read(1024)
+			if not filedata:
+				break
+			sock.sendall(filedata)
+		file.close()
+
 def handle(sock,addr):#处理请求
 	try:
 		while True:
-			_type=str(sock.recv(1),'utf-8')#先接收一个4字节数字 表示请求的类型
+			_type=recv_string(sock)#先接收一个4字节数字 表示请求的类型
 			print('type=',_type)
 			if _type=='1':
 				print('开始处理登录请求')
@@ -138,6 +227,8 @@ def handle(sock,addr):#处理请求
 				handle_onlinelist()
 			elif _type=='5':
 				handle_private_send(sock)
+			elif _type=='#Picture#':
+				handle_pic(sock)
 	except Exception as e:
 		print(str(addr) + " 连接异常，准备断开: " + str(e))
 	finally:#如果连接断开，将对应的人清除出列表
@@ -151,6 +242,7 @@ def handle(sock,addr):#处理请求
 			#handle onlinelist
 
 sk=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0)
+#sk.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sk.bind(('127.0.0.1',13333))#socket绑定到ip地址 127.0.0.1表示本地，13333是端口
 sk.listen(10)#最大连接数
 print("服务器启动成功，开始监听...")
