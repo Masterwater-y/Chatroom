@@ -4,6 +4,7 @@ import math
 
 online_user=[]#list  dont use tuple 在线的socket
 sock_user={}#字典 存储socket对应的名字
+user_sock={}#名字对应socket
 
 def send_string(sock,content): #socket通信发送数据，需要把数据转换为byte类型，并且先告知数据的长度
 	sock.sendall(len(bytes(content,encoding='utf-8')).to_bytes(4,byteorder='big'))#将发送的内容的长度以utf-8协议转换为4字节的byte byteorder是指字节序
@@ -54,7 +55,8 @@ def handle_login(sock): #处理登录请求
 			print('存储socket信息')
 			online_user.append(sock)#加入在线socket列表
 			print(str(len(online_user)))
-			sock_user[sock]=user 
+			sock_user[sock]=user
+			user_sock[user]=sock 
 			send_string(sock,'0')#0为成功
 			handle_onlinelist()#更新在线列表
 		else:
@@ -92,6 +94,21 @@ def handle_sending(sock):#处理发送消息请求，即服务器把收到的信
 		send_string(user,sock_user[sock])#发送消息来源人
 		send_string(user,content)#发送内容
 
+def handle_private_send(sock):
+	user=sock_user[sock]
+	target=user_sock[recv_string(sock)]
+	content=recv_string(sock)
+	send_string(target,'2')
+	send_string(target,user)
+	send_string(target,content)
+	send_string(target,user)
+	send_string(sock,'2')
+	send_string(sock,sock_user[target])
+	send_string(sock,content)
+	send_string(sock,user)
+
+
+
 def handle_onlinelist():#处理更新在线列表请求
 	num=str(len(online_user))
 	print(num)
@@ -119,6 +136,8 @@ def handle(sock,addr):#处理请求
 			elif _type=='4':
 				print('开始处理刷新列表')
 				handle_onlinelist()
+			elif _type=='5':
+				handle_private_send(sock)
 	except Exception as e:
 		print(str(addr) + " 连接异常，准备断开: " + str(e))
 	finally:#如果连接断开，将对应的人清除出列表

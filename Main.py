@@ -8,6 +8,7 @@ import time
 from threading import Thread
 from PIL import ImageTk as itk
 from PIL import Image as Img
+import os
 
 def open_mainwindow(user):
 	global main_window
@@ -31,6 +32,12 @@ def close_login_window():
 	close_socket()
 	login_window.login_window.destroy()
 
+def mkdir(path):
+	path=path.strip()
+	path=path.rstrip('\\')
+	isExist=os.path.exists(path)
+	if not isExist:
+		os.makedirs(path)
 
 def login():#登录按钮绑定的函数
 	user,key=login_window.getinput()# 获取登录窗口输入框的内容
@@ -38,6 +45,10 @@ def login():#登录按钮绑定的函数
 	result=client.check_login(user,key)
 	#print(result)
 	if result=='0':#验证成功
+		path='data\\record\\'+user+'\\'
+		mkdir(path)
+		with open(path+'group.txt','a+',encoding='utf-8') as record:
+			pass
 		login_window.close()#先关闭登录窗口 再开mainwindow，否则无法关闭登录窗口
 		open_mainwindow(user) #打开主界面的函数
 	elif result=='1':
@@ -56,11 +67,12 @@ def recv_data(): #客户端从服务器接收数据函数
 			if _type=='':
 				continue
 			print('type='+_type)
-			if _type=='0': #接收的是消息
+			if _type=='0': #接收的是群聊消息
 				print('接受到服务器发来的消息')
 				user=client.recv_string()
 				content=client.recv_string()
-				main_window.message_box_recv(user,content)#收到消息后修改消息记录框
+				sender=user
+				main_window.message_box_recv(user,content,0,sender)#收到消息后修改消息记录框
 			elif _type=='1':#接收的是刷新在线列表
 				print('refresh')
 				name=[]
@@ -68,6 +80,11 @@ def recv_data(): #客户端从服务器接收数据函数
 				for i in range(num): #接收在线人员名单
 					name.append(client.recv_string())
 				main_window.refresh(name)
+			elif _type=='2':
+				user=client.recv_string()
+				content=client.recv_string()
+				sender=client.recv_string()
+				main_window.message_box_recv(user,content,1,sender)
 		except Exception as e: #出现任何错误
 			print('接受服务器消息错误:'+str(e))#！！！不加break退出会崩溃
 			break
@@ -75,8 +92,12 @@ def recv_data(): #客户端从服务器接收数据函数
 
 def send_message(): #主界面发送消息 函数
 	content=main_window.getinput() #获取输入框的内容
-	if content!=-1:
-		client.send_message(content) #客户端向服务器发送内容
+	if content!=-1:#-1为空
+		target=main_window.send_name()
+		if target=='#Group#':
+			client.send_message(content) #客户端向服务器发送内容
+		else:
+			client.private_sending(target,content) 
 		main_window.input_box_clean() #发送之后清空输入框
 
 def reg_back():# 注册界面返回按钮绑定的函数

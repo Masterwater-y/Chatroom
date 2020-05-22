@@ -40,3 +40,9 @@ class Client:
 	def send_message(self,content):
 		self.send_string('3')#发送信息请求
 		self.send_string(content)
+
+	def private_sending(self,target,content):
+		self.send_string('5')
+		self.send_string(target)
+		self.send_string(content)
+
