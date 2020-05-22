@@ -14,7 +14,8 @@ class MainWindow():
 		self.refresh_func=refresh_func
 		self.close_func=close_func
 		self.curtag='#Group#' #current target
-
+		self.title_var=None
+		self.unread={}
 	def show(self):
 		self.main_window=Tk()
 		self.main_window.configure(bg='#333333')
@@ -28,7 +29,9 @@ class MainWindow():
 		main_size='%dx%d+%d+%d' %(main_width,main_height,main_px,main_py)
 		self.main_window.geometry(main_size)
 		self.main_window.title('Chatroom')
-		Title_Labal=Label(self.main_window,bg='#444444',text='Chatroom',font=('黑体',18),fg='white').grid(row=0,column=0,sticky=E+W,columnspan=4,ipady=10)
+		self.title_var=StringVar()
+		self.title_var.set('#Group#')
+		self.Title_Label=Label(self.main_window,bg='#444444',textvariable=self.title_var,font=('黑体',18),fg='white').grid(row=0,column=0,sticky=E+W,columnspan=4,ipady=10)
 		self.online_list=Listbox(self.main_window,height=30,bg='#333333',fg='white',font=('宋体',12))
 		self.online_list.grid(row=1, column=0, rowspan=4, sticky=N + S, padx=10, pady=(0, 5))
 		online_list_bar=Scrollbar(self.main_window)
@@ -59,17 +62,41 @@ class MainWindow():
 		self.messagebox.tag_config('green',foreground='green') #foreground字体颜色 background填充背景颜色
 		self.messagebox.tag_config('blue',foreground='blue')
 		self.online_list.bind('<Double Button-1>',self.change_target)
+		
 		self.main_window.mainloop()
 
 	def refresh(self,name):#刷新在线列表
 		self.online_list.delete(0,END)#0 END表示从第一个到最后一个
+		group_un='#Group#'
+		self.unread.setdefault(group_un,0)
+		if self.unread['#Group#']!=0:
+			group_un+='('+str(self.unread['#Group#'])+')'
+		self.online_list.insert(END,group_un)
+		self.name=name
 		for names in name:
+			self.unread.setdefault(names,0)
+			if self.unread[names]!=0:
+				names=names+'('+str(self.unread[names])+')'
 			self.online_list.insert(END,names)#在列表末尾插入names
 
 
 	def change_target(self,event):# bind会返回event
 		pos=self.online_list.curselection()[0]#返回的是元组
-		self.curtag=self.online_list.get(pos)
+		origin=self.online_list.get(pos)
+		pos1=-1
+		for i in range(len(origin)-1,-1,-1):
+			if origin[i]=='(':
+				pos1=i
+				break
+			if origin[i] not in ('0123456789()'):
+				break
+		if pos1==-1:
+			self.curtag=origin
+		else:
+			self.curtag=origin[0:pos1]
+		if self.curtag==self.username:
+			return
+		self.title_var.set(self.curtag)
 		path=self.getfile(1,self.username,self.curtag)
 		flag=os.path.isfile(path)
 		if not flag:
@@ -80,12 +107,12 @@ class MainWindow():
 		else:
 			_type=1
 		self.messagebox_history(_type,self.curtag)
-		self.messagebox_history(_type,self.curtag)
+		self.unread[self.curtag]=0
+		self.refresh_func()
 		print(self.curtag)
 
 	def input_box_clean(self):#清除输入框
 		print(type(self.online_list))
-		#self.online_list.insert(END,'在线列表')
 		self.input_box.delete(0.0,END) # %d.%d表示x行y列 ，可以加''   表示从输入框的(0,0)处到末尾
 		
 	def getfile(self,_type,user,target):
@@ -103,10 +130,24 @@ class MainWindow():
 		with open(file_name,'a',encoding='utf-8') as record:
 			record.write(sender+' '+head+'\n')
 			record.write(' '+content)
-		if self.curtag=='#Group#' and _type==0:
-			self.messagebox_history(_type,self.curtag)
-		elif self.curtag==user and _type==1:
-			self.messagebox_history(_type,self.curtag)
+		now=self.curtag
+		if now=='#Group#' and _type==0:
+			self.messagebox_history(_type,now)
+			return
+		elif now==user and _type==1:
+			self.messagebox_history(_type,now)
+			print(self.unread)
+			return
+		if sender==self.username:
+			return
+		if _type==0:
+			self.unread.setdefault('#Group#',0)
+			self.unread['#Group#']+=1
+			return
+		self.unread.setdefault(sender,0)
+		self.unread[sender]=self.unread[sender]+1
+		print(self.unread)
+
 
 
 	def messagebox_history(self,_type,target):

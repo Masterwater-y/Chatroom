@@ -73,6 +73,7 @@ def recv_data(): #客户端从服务器接收数据函数
 				content=client.recv_string()
 				sender=user
 				main_window.message_box_recv(user,content,0,sender)#收到消息后修改消息记录框
+				client.refresh_req()
 			elif _type=='1':#接收的是刷新在线列表
 				print('refresh')
 				name=[]
@@ -85,6 +86,7 @@ def recv_data(): #客户端从服务器接收数据函数
 				content=client.recv_string()
 				sender=client.recv_string()
 				main_window.message_box_recv(user,content,1,sender)
+				client.refresh_req()
 		except Exception as e: #出现任何错误
 			print('接受服务器消息错误:'+str(e))#！！！不加break退出会崩溃
 			break
