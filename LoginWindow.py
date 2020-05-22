@@ -13,8 +13,6 @@ class LoginWindow: #类的定义
 		self.user=None
 		self.close_func=close_func
 
-
-
 	def show(self):
 		self.login_window=Tk()#创建一个窗口
 		self.login_window.protocol("WM_DELETE_WINDOW", self.close_func)#protocol wm_delete_window判断关闭窗口事件，保证socket关闭
@@ -44,7 +42,6 @@ class LoginWindow: #类的定义
 		key_img=itk.PhotoImage(file='image/keyx.png')
 		bg_canva.create_image(172,157,image=user_img)
 		bg_canva.create_image(172,220,image=key_img)
-		#react=self.login_window.register(self.clean_entry)
 		user_entry=Entry(self.login_window,textvariable=self.user,width=30).place(x=211,y=150,height=30)
 		key_entry=Entry(self.login_window,textvariable=self.key,show='*',width=30).place(x=211,y=207,height=30)
 		self.login_window.bind('<Return>',self.bind_login)
@@ -52,12 +49,6 @@ class LoginWindow: #类的定义
 		register_btn=Button(self.login_window,image=reg_img,borderwidth=0,highlightthickness=0,command=self.reg_func).place(x=431,y=154)
 		self.login_window.mainloop()
 	#获取用户名和密码
-	
-	'''def clean_entry(self,content,flag):
-		print(flag)
-		print("Entry:"+content)
-		exit(True)'''
-
 	def bind_login(self,event):
 		self.login_func()
 	def getinput(self): #返回账号和密码

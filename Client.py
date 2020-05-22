@@ -9,7 +9,7 @@ class Client:
 		#self.filesize=0
 
 	def send_string(self,content):#先发送内容长度，再发送内容
-		print(1)
+		#print(1)
 		self.sk.sendall(len(bytes(content,encoding='utf-8')).to_bytes(4,byteorder='big'))
 		self.sk.sendall(bytes(content,encoding='utf-8'))
 		
@@ -54,8 +54,6 @@ class Client:
 		self.send_string(target)
 		self.send_string(os.path.basename(path))
 		self.send_string(str(os.stat(path).st_size))
-		print ('client filepath: ',path)
-		print(os.stat(path).st_size)
 		# with open(filepath,'rb') as fo: 这样发送文件有问题，发送完成后还会发一些东西过去
 		file=open(path,'rb')
 		while True:
@@ -64,7 +62,7 @@ class Client:
 				break
 			self.sk.sendall(filedata)
 		file.close()
-		print ('send over...')
+		#print ('send over...')
 
 	def recv_pic(self,user,target):
 		filename=self.recv_string()
@@ -77,10 +75,10 @@ class Client:
 				if file_route[j]=='.':
 					break
 			file_route=file_route[0:j]+'('+str(i)+')'+file_route[j:]
-		print ('file new name is %s, self.filesize is %s' %(file_route,filesize))
+		#print ('file new name is %s, self.filesize is %s' %(file_route,filesize))
 		recvd_size = 0 #定义接收了的文件大小
 		file = open(file_route,'wb')
-		print ('stat receiving...')
+		#print ('stat receiving...')
 		while not recvd_size == filesize:
 			if filesize - recvd_size > 1024:
 				rdata = self.sk.recv(1024)

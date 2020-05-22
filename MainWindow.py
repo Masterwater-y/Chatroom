@@ -16,11 +16,11 @@ class MainWindow():
 		self.input_box=None
 		self.refresh_func=refresh_func
 		self.close_func=close_func
-		self.curtag='#Group#' #current target
+		self.curtag='!Group!' #current target
 		self.title_var=None
 		self.unread={}
 		self.send_pic_func=send_pic_func
-		self.img=[]
+		self.img=[]#存储消息记录中的图片
 		self.num=-1
 	def show(self):
 		self.main_window=Tk()
@@ -36,7 +36,7 @@ class MainWindow():
 		self.main_window.geometry(main_size)
 		self.main_window.title('Chatroom')
 		self.title_var=StringVar()
-		self.title_var.set('#Group#')
+		self.title_var.set('!Group!')
 		self.Title_Label=Label(self.main_window,bg='#444444',textvariable=self.title_var,font=('黑体',18),fg='white').grid(row=0,column=0,sticky=E+W,columnspan=4,ipady=10)
 		self.online_list=Listbox(self.main_window,height=30,bg='#333333',fg='white',font=('宋体',12))
 		self.online_list.grid(row=1, column=0, rowspan=4, sticky=N + S, padx=10, pady=(0, 5))
@@ -77,10 +77,10 @@ class MainWindow():
 
 	def refresh(self,name):#刷新在线列表
 		self.online_list.delete(0,END)#0 END表示从第一个到最后一个
-		group_un='#Group#'
+		group_un='!Group!'
 		self.unread.setdefault(group_un,0)
-		if self.unread['#Group#']!=0:
-			group_un+='('+str(self.unread['#Group#'])+')'
+		if self.unread['!Group!']!=0:
+			group_un+='('+str(self.unread['!Group!'])+')'
 		self.online_list.insert(END,group_un)
 		self.name=name
 		for names in name:
@@ -89,7 +89,7 @@ class MainWindow():
 				names=names+'('+str(self.unread[names])+')'
 			self.online_list.insert(END,names)#在列表末尾插入names
 
-	def messagebox_clean(self):
+	def messagebox_clean(self):#清空消息记录
 		user=self.username
 		target=self.curtag
 		file_name=self.getfile(user,target)
@@ -97,17 +97,14 @@ class MainWindow():
 			pass
 		self.messagebox_history(target)
 
-
-
-
-	def bind_send(self,event):
+	def bind_send(self,event):#绑定发送消息请求
 		self.send_func()
 
-	def get_pic(self):
+	def get_pic(self):#选择发送图片的路径
 		path=filedialog.askopenfilename()
 		return path,self.curtag
 
-	def deal_repeat(self,pos):
+	def deal_repeat(self,pos):#处理文件名重复,防止影响历史记录读取
 		origin=self.online_list.get(pos)
 		pos1=-1
 		for i in range(len(origin)-1,-1,-1):
@@ -121,7 +118,7 @@ class MainWindow():
 		else:
 			self.curtag=origin[0:pos1]
 
-	def change_target(self,event):# bind会返回event
+	def change_target(self,event):# 切换聊天对象   bind会返回event
 		pos=self.online_list.curselection()[0]#返回的是元组
 		self.deal_repeat(pos)
 		if self.curtag==self.username:
@@ -135,13 +132,12 @@ class MainWindow():
 		self.messagebox_history(self.curtag)
 		self.unread[self.curtag]=0
 		self.refresh_func()
-		print(self.curtag)
+		#print(self.curtag)
 
 	def input_box_clean(self):#清除输入框
-		print(type(self.online_list))
 		self.input_box.delete(0.0,END) # %d.%d表示x行y列 ，可以加''   表示从输入框的(0,0)处到末尾
 		
-	def getfile(self,user,target):
+	def getfile(self,user,target):#获取消息记录文件名
 		file_name='data\\record\\'+user+'\\'
 		file_name+=target+'.txt'
 		return file_name
@@ -159,15 +155,15 @@ class MainWindow():
 			return
 		if sender==self.username:
 			return
-		if target=='#Group#':
-			self.unread.setdefault('#Group#',0)
-			self.unread['#Group#']+=1
+		if target=='!Group!':
+			self.unread.setdefault('!Group!',0)
+			self.unread['!Group!']+=1
 			return
 		self.unread.setdefault(sender,0)
 		self.unread[sender]=self.unread[sender]+1
-		print(self.unread)
+		#print(self.unread)
 
-	def messagebox_history(self,target):
+	def messagebox_history(self,target):#读取消息记录并显示
 		self.messagebox.config(state=NORMAL)
 		self.messagebox.delete(0.0,END)
 		user=self.username
@@ -177,16 +173,11 @@ class MainWindow():
 				pos=content.find(' ',0)
 				user=content[0:pos]
 				content=content[pos+1:].rstrip('\n')
-				#print('--------------------')
-				##print('user=',user)
-				#print('content:',content)
-				flag=os.path.exists(content)
-				#print('flag=',flag)'''
+				flag=os.path.exists(content)#如果内容是路径就判定为图片
 				if pos==0:
 					if flag:
 						self.num=self.num+1
 						self.img.append(itk.PhotoImage(file=content))
-						print(content)
 						self.messagebox.image_create(END,image=self.img[self.num])#img用全局变量，否则图片显示空白，且每张图都要单独用一个变量
 						self.messagebox.insert(END,'\n')
 					else:
@@ -199,7 +190,7 @@ class MainWindow():
 			self.messagebox.config(state=DISABLED)
 		self.messagebox.see(END)
 
-	def send_name(self):
+	def send_name(self):#发送当前聊天对象
 		return self.curtag
 
 	def get_name(self):
