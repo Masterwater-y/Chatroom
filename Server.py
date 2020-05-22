@@ -3,6 +3,7 @@ from threading import Thread
 import math
 import struct
 import os
+import pymysql
 
 online_user=[]#list  dont use tuple 在线的socket
 sock_user={}#字典 存储socket对应的名字
@@ -23,23 +24,19 @@ def recv_string(sock):#接收客户端发来的数据
 			content=content+str(sock.recv(maxsize),encoding='utf-8')
 	return content
 
-def check_login(username,key):#服务器检查登录
+def check_login(user,key):#服务器检查登录
 	is_user=True #第一行为账号，第二行为密码，判断当前行是否为账号
 	flag=False
-	user=username
 	i=0
-	with open('server\\data\\user.in','r',encoding='utf-8') as data:
-		for content in data:
-			content=content.replace('\n','')
-			i=i+1
-			if i==1:#从第一行开始存储会出错，未找到原因只好从第二行开始
-				continue
-			if (is_user) and (content==user):
-				flag=True
-			if (not is_user) and flag:
-				return(content==key)
-			is_user=not is_user
-	return(False)
+	sql='''
+	SELECT * FROM userinfo where user='%s' and password='%s'
+	'''%(user,key)
+	#print(sql)
+	flag=cursor.execute(sql)
+	if flag:
+		return(True)
+	else:
+		return(False)
 
 def loading(sock):
 	path=os.path.join('server','data',sock_user[sock])
@@ -80,20 +77,37 @@ def handle_register(sock):#处理注册请求
 	user=recv_string(sock)
 	key=recv_string(sock)
 	is_user=True
-	Flag=True
-	with open('server\\data\\user.in','r',encoding='utf-8') as data:
-		for content in data:
-			content=content.rstrip('\n')
-			if is_user and content==user:
-				Flag=False
-				send_string(sock,'1')
-				print(user+'已被注册')
-				print(divide)
-				return#已被注册
-			is_user=not is_user
-	with open('server\\data\\user.in','a',encoding='utf-8') as data:
-		data.write(user+'\n')
-		data.write(key+'\n')
+	sql='''
+	SELECT * FROM userinfo WHERE user='%s' 
+	'''%(user)
+	try:
+		Flag=cursor.execute(sql)
+	except Exception as e:
+		db.rollback()
+		print(e)
+		send_string(sock,'2')
+		return
+	if Flag:
+		send_string(sock,'1')
+		print(user+'已被注册')
+		print(divide)
+		return#已被注册
+	else:
+		sql='''
+		INSERT INTO userinfo 
+		(user,password)
+		VALUES
+		('%s','%s') 
+		'''%(user,key)
+		try:
+			cursor.execute(sql)
+			db.commit()
+			print('注册成功')
+		except Exception as e:
+			db.rollback()
+			print(e)
+			send_string(sock,'2')
+			return
 	send_string(sock,'0')
 	print(user+':注册成功')#0 注册成功-
 	print(divide)
@@ -254,12 +268,28 @@ def handle(sock,addr):#处理请求
 			print(str(addr)+'连接关闭异常')
 			#handle onlinelist
 
+def connect_db():
+	global db,cursor
+	db = pymysql.connect(
+	host='localhost',
+	user='admin',password='admin',
+	database='Chatroom',
+	charset='utf8')
+	cursor=db.cursor()
+	cursor.execute('use Chatroom')
+
+connect_db()
 sk=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0)#使用TCP协议
 divide='------------------------'#分割线
 #sk.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sk.bind(('127.0.0.1',13333))#socket绑定到ip地址 127.0.0.1表示本地，13333是端口
 sk.listen(10)#最大连接数
 print("服务器启动成功，开始监听...")
-while True:
-	sock, addr=sk.accept() #socket address
-	Thread(target=handle,args=(sock, addr)).start()#给监听到的每一个socket新建一个线程运行handle
+try:
+	while True:
+		sock, addr=sk.accept() #socket address
+		Thread(target=handle,args=(sock, addr)).start()#给监听到的每一个socket新建一个线程运行handle
+except Exception as e:
+	sk.close()
+	cursor.close()
+	db.close()

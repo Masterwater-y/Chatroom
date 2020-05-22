@@ -19,6 +19,7 @@ class RegWindow:
 		screen_width=self.reg_window.winfo_screenwidth()#获取当前屏幕的宽度
 		self.reg_window_width=600 #登录窗口的宽度
 		self.reg_window_height=375
+		self.reg_window.title('注册')
 		self.reg_window_px=(screen_width-self.reg_window_width)/2 #登录窗口以屏幕左上角为原点的x轴位置 目的是使窗口在屏幕中央出现
 		self.reg_window_py=(screen_height-self.reg_window_height)/2
 		self.reg_window_size='%dx%d+%d+%d' %(self.reg_window_width,self.reg_window_height,self.reg_window_px,self.reg_window_py)
@@ -42,7 +43,7 @@ class RegWindow:
 		bg_canva.create_image(172,124,image=user_img)
 		bg_canva.create_image(172,185,image=key_img)
 		bg_canva.create_image(172,252,image=confirm_img)
-		#react=self.reg_window.regist72(s24f.clean_entry)
+		self.reg_window.bind('<Return>',self.bind_register)
 		user_entry=Entry(self.reg_window,textvariable=self.user,width=30).place(x=211,y=115,height=30)
 		key_entry=Entry(self.reg_window,textvariable=self.key,show='*',width=30).place(x=211,y=175,height=30)
 		confirm_entry=Entry(self.reg_window,textvariable=self.confirm,show='*',width=30).place(x=211,y=235,height=30)
@@ -52,5 +53,7 @@ class RegWindow:
 	#获取用户名和密码
 	def getinput(self):
 		return self.user.get(), self.key.get(), self.confirm.get()
+	def bind_register(self,event):
+		self.reg_func()
 	def close(self):
 		self.reg_window.destroy()

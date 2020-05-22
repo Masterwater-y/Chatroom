@@ -20,6 +20,7 @@ class LoginWindow: #类的定义
 		#新UI
 		screen_height=self.login_window.winfo_screenheight()
 		screen_width=self.login_window.winfo_screenwidth()#获取当前屏幕的宽度
+		self.login_window.title('登录')
 		self.login_window_width=600 #登录窗口的宽度
 		self.login_window_height=375
 		self.login_window_px=(screen_width-self.login_window_width)/2 #登录窗口以屏幕左上角为原点的x轴位置 目的是使窗口在屏幕中央出现

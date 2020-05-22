@@ -9,6 +9,14 @@ from threading import Thread
 from PIL import ImageTk as itk
 from PIL import Image as Img
 import os
+import hashlib
+
+
+# md5加密方法
+def gen_md5(key):
+    key_md5 = hashlib.md5()
+    key_md5.update(key.encode(encoding='utf-8'))
+    return key_md5.hexdigest()
 
 def open_mainwindow(user):
 	global main_window
@@ -51,6 +59,7 @@ def login():#登录按钮绑定的函数
 	print(divide)
 	print('发送登录请求')
 	user,key=login_window.getinput()# 获取登录窗口输入框的内容
+	key=gen_md5(key)
 	result=client.check_login(user,key)#登录验证结果
 	if result=='0':#验证成功
 		print('登录成功')
@@ -152,10 +161,14 @@ def reg_back():# 注册界面返回按钮绑定的函数
 
 def reg_check():# 注册检测
 	user,key,keycheck=reg_window.getinput() #注册界面获得的输入
+	if user=='!Group!':
+		messagebox.showerror(title='错误',message='非法ID')
+		return
 	if key=='' or keycheck=='':
 		messagebox.showerror(title='错误',message='密码为空')
 		return
 	if key==keycheck:
+		key=gen_md5(key)
 		flag=client.check_register(user,key)
 		if flag=='0':
 			messagebox.showinfo(title="提示", message="注册成功")
