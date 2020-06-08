@@ -151,6 +151,7 @@ def recv_data(): #客户端从服务器接收数据函数
 
 def send_message(): #主界面发送消息 函数
 	content=main_window.getinput() #获取输入框的内容
+	#print('content:',content)
 	if content!=-1:#-1为空
 		target=main_window.send_name()
 		if target=='!Group!':

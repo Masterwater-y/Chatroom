@@ -24,7 +24,7 @@ class MainWindow():
 		self.num=-1
 	def show(self):
 		self.main_window=Tk()
-		self.main_window.configure(bg='#333333')
+		self.main_window.configure(bg='white')
 		self.main_window.protocol("WM_DELETE_WINDOW", self.close_func)
 		screen_height=self.main_window.winfo_screenheight()
 		screen_width=self.main_window.winfo_screenwidth()
@@ -37,38 +37,45 @@ class MainWindow():
 		self.main_window.title('Chatroom')
 		self.title_var=StringVar()
 		self.title_var.set('!Group!')
-		self.Title_Label=Label(self.main_window,bg='#444444',textvariable=self.title_var,font=('黑体',18),fg='white').grid(row=0,column=0,sticky=E+W,columnspan=4,ipady=10)
-		self.online_list=Listbox(self.main_window,height=30,bg='#333333',fg='white',font=('宋体',12))
-		self.online_list.grid(row=1, column=0, rowspan=4, sticky=N + S, padx=10, pady=(0, 5))
+		top_img=itk.PhotoImage(file='image/main_top.jpg')
+		#bg_canva=Canvas(self.main_window,width=main_width,height=40)
+		#bg_canva.create_image(main_width/2,main_height/2,image=top_img)
+		#bg_canva.create_text(300,20,textvariable=self.title_var)
+		#bg_canva.grid(row=0,column=0)
+		self.Title_Label=Label(self.main_window,image=top_img,compound='center',textvariable=self.title_var,font=('黑体',18),fg='white').grid(row=0,column=0,columnspan=2)
+		self.online_list=Listbox(self.main_window,height=30,bg='white',fg='black',font=('宋体',12))
+		self.online_list.grid(row=1, column=0, rowspan=2,sticky=N + S, padx=(0,10), pady=(0, 5))
 		online_list_bar=Scrollbar(self.main_window)
-		online_list_bar.grid(row=1,column=0,sticky=E+N+S,rowspan=4,padx=(0,10))
+		online_list_bar.grid(row=1,column=0,sticky=E+N+S,rowspan=2,padx=(0,10))
 		online_list_bar['command'] = self.online_list.yview#绑定滚动条和列表
 		self.online_list['yscrollcommand'] = online_list_bar.set
 
-		self.messagebox=Text(self.main_window,width=97,state=DISABLED)  #消息记录框 常态下无法输入
+		self.messagebox=Text(self.main_window,width=90,state=DISABLED,borderwidth=0,height=20)  #消息记录框 常态下无法输入
 		self.messagebox_history(self.curtag)
 
-		self.messagebox.grid(row=1,column=1,sticky=N+S,rowspan=2)
+		self.messagebox.grid(row=1,column=1,sticky=N+S,padx=(0,5))
 		messagebox_bar=Scrollbar(self.main_window)
 		messagebox_bar['command']=self.messagebox.yview
 		self.messagebox['yscrollcommand']=messagebox_bar.set
-		messagebox_bar.grid(row=1,column=1,stick=E+N+S,rowspan=2)
+		messagebox_bar.grid(row=1,column=1,stick=E+N+S,padx=(0,5))
 
 		self.input_box=Text(self.main_window,width=97,height=2)#输入框 
-		self.input_box.grid(row=3,column=1,sticky=N+S,pady=(40,0))
+		self.input_box.grid(row=2,column=1,sticky=N+S,pady=(40,0),padx=(0,5))
 		input_box_bar=Scrollbar(self.main_window)
 		input_box_bar['command']=self.input_box.yview
 		self.input_box['yscrollcommand']=input_box_bar.set
-		input_box_bar.grid(row=3,column=1,stick=E+N+S,pady=(40,0))
-		btn_frame=Frame(self.main_window,bg='#333333')
-		send_btn=Button(btn_frame,text='发送',bg='lightgreen',width=5,font=('黑体',14),command=self.send_func).grid(row=0,column=0,sticky=W,padx=(50,100))
-		send_btn=Button(btn_frame,text='清空',bg='red',width=5,font=('黑体',14),command=self.input_box_clean).grid(row=0,column=1,sticky=E,padx=(30,0))
-		btn_frame.place(x=200,y=530)  
+		input_box_bar.grid(row=2,column=1,stick=E+N+S,pady=(40,0),padx=(0,5))
+		btn_frame=Frame(self.main_window,bg='white')
 
-		send_pic_btn=Button(self.main_window,text='发送图片',command=self.send_pic_func).place(x=200,y=370)
-		clean_rec_btn=Button(self.main_window,text='清空聊天记录',command=self.messagebox_clean).place(x=300,y=370)
+		send_img=itk.PhotoImage(file='image/send_bg.png')
+		send_btn=Button(btn_frame,text='发送',compound='center',bg='white',image=send_img,fg='white',width=80,height=25,font=('黑体',12),borderwidth=0,highlightthickness=0,command=self.send_func).grid(row=0,column=0,sticky=W,padx=(50,100))
+		clean_btn=Button(btn_frame,text='清空',fg='white',bg='white',image=send_img,width=80,height=25,compound='center',font=('黑体',12),command=self.input_box_clean,borderwidth=0,highlightthickness=0).grid(row=0,column=1,sticky=E,padx=(30,0))
+		btn_frame.grid(row=3,column=1)  
 
-		refresh_btn=Button(self.main_window,text='刷新在线列表',command=self.refresh_func).grid(row=5,column=0)
+		send_pic_btn=Button(self.main_window,text='发送图片',command=self.send_pic_func).place(x=200,y=397)
+		clean_rec_btn=Button(self.main_window,text='清空聊天记录',command=self.messagebox_clean).place(x=300,y=397)
+
+		refresh_btn=Button(self.main_window,text='刷新在线列表',command=self.refresh_func).grid(row=3,column=0)
 		self.messagebox.tag_config('green',foreground='green') #foreground字体颜色 background填充背景颜色
 		self.messagebox.tag_config('blue',foreground='blue')
 		self.online_list.bind('<Double Button-1>',self.change_target)
@@ -179,7 +186,7 @@ class MainWindow():
 						self.num=self.num+1
 						self.img.append(itk.PhotoImage(file=content))
 						self.messagebox.image_create(END,image=self.img[self.num])#img用全局变量，否则图片显示空白，且每张图都要单独用一个变量
-						self.messagebox.insert(END,'\n')
+						#self.messagebox.insert(END,'\n')
 					else:
 						self.messagebox.insert(END,content+'\n')
 					continue
