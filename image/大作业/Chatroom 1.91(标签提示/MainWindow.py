@@ -85,11 +85,8 @@ class MainWindow():
 		clean_btn_tips=Tips(clean_rec_btn,'清空聊天记录')
 		clean_rec_btn.place(x=300,y=398)
 
-		refresh_img=itk.PhotoImage(file='image/refresh_btn.png')
-		refresh_btn=Button(self.main_window,image=refresh_img,borderwidth=0,bg='white',command=self.refresh_func)
-		refresh_btn_tips=Tips(refresh_btn,'刷新在线列表')
-		refresh_btn.grid(row=3,column=0)
 
+		refresh_btn=Button(self.main_window,text='刷新在线列表',command=self.refresh_func).grid(row=3,column=0)
 		self.messagebox.tag_config('green',foreground='green') #foreground字体颜色 background填充背景颜色
 		self.messagebox.tag_config('blue',foreground='blue')
 		self.online_list.bind('<Double Button-1>',self.change_target)
