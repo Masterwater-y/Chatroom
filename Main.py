@@ -89,7 +89,9 @@ def resize_image(infile, x_s=400):#缩小图片尺寸
 def send_pic_func():#发送图片函数
 	path,target=main_window.get_pic() #获取要发送图片的路径和目标
 	fn=os.path.basename(path)
-	if fn[-3:] not in ('jpg','png'):#判断是否为文件类型
+	if fn=='':#没选择图片
+		return
+	if fn[-3:] not in ('jpg','png'):#判断是否为图片类型
 		messagebox.showerror(title="错误", message="非合法类型")
 		return
 	paths,flag=resize_image(path)#缩小尺寸

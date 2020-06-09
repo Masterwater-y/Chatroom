@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import messagebox
 from tkinter import filedialog
+from Tips import Tips
 import time
 import os
 from PIL import ImageTk as itk
@@ -22,6 +23,7 @@ class MainWindow():
 		self.send_pic_func=send_pic_func
 		self.img=[]#存储消息记录中的图片
 		self.num=-1
+		self.send_pic_btn=None
 	def show(self):
 		self.main_window=Tk()
 		self.main_window.configure(bg='white')
@@ -42,7 +44,8 @@ class MainWindow():
 		#bg_canva.create_image(main_width/2,main_height/2,image=top_img)
 		#bg_canva.create_text(300,20,textvariable=self.title_var)
 		#bg_canva.grid(row=0,column=0)
-		self.Title_Label=Label(self.main_window,image=top_img,compound='center',textvariable=self.title_var,font=('黑体',18),fg='white').grid(row=0,column=0,columnspan=2)
+
+		self.Title_Label=Label(self.main_window,cursor='hand2',image=top_img,compound='center',textvariable=self.title_var,font=('黑体',18),fg='white').grid(row=0,column=0,columnspan=2)
 		self.online_list=Listbox(self.main_window,height=30,bg='white',fg='black',font=('宋体',12))
 		self.online_list.grid(row=1, column=0, rowspan=2,sticky=N + S, padx=(0,10), pady=(0, 5))
 		online_list_bar=Scrollbar(self.main_window)
@@ -72,14 +75,24 @@ class MainWindow():
 		clean_btn=Button(btn_frame,text='清空',fg='white',bg='white',image=send_img,width=80,height=25,compound='center',font=('黑体',12),command=self.input_box_clean,borderwidth=0,highlightthickness=0).grid(row=0,column=1,sticky=E,padx=(30,0))
 		btn_frame.grid(row=3,column=1)  
 
-		send_pic_btn=Button(self.main_window,text='发送图片',command=self.send_pic_func).place(x=200,y=397)
-		clean_rec_btn=Button(self.main_window,text='清空聊天记录',command=self.messagebox_clean).place(x=300,y=397)
+		pic_img=itk.PhotoImage(file='image/pic_btn.png')
+		self.send_pic_btn=Button(self.main_window,image=pic_img,borderwidth=0,bg='white',command=self.send_pic_func)
+		send_btn_tips=Tips(self.send_pic_btn,'发送图片')
+		self.send_pic_btn.place(x=200,y=397)
+
+		clean_img=itk.PhotoImage(file='image/clean_btn.png')
+		clean_rec_btn=Button(self.main_window,image=clean_img,borderwidth=0,bg='white',command=self.messagebox_clean)
+		clean_btn_tips=Tips(clean_rec_btn,'清空聊天记录')
+		clean_rec_btn.place(x=300,y=398)
+
 
 		refresh_btn=Button(self.main_window,text='刷新在线列表',command=self.refresh_func).grid(row=3,column=0)
 		self.messagebox.tag_config('green',foreground='green') #foreground字体颜色 background填充背景颜色
 		self.messagebox.tag_config('blue',foreground='blue')
 		self.online_list.bind('<Double Button-1>',self.change_target)
 		self.main_window.bind('<Return>',self.bind_send)
+
+
 		self.main_window.mainloop()
 
 	def refresh(self,name):#刷新在线列表
