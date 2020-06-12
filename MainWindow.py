@@ -191,8 +191,7 @@ class MainWindow():
 		file_name=self.getfile(self.username,target)
 		with open(file_name,'a',encoding='utf-8') as record:
 			record.write(sender+' '+head+'\n')
-			record.write(' '+content)
-
+			record.write(' '+content+'\n')
 		if now==target:
 			self.messagebox_history(now)
 			return
@@ -222,6 +221,7 @@ class MainWindow():
 					if flag:
 						self.num=self.num+1
 						self.img.append(itk.PhotoImage(file=content))
+						self.messagebox.insert(END,'      ')
 						self.messagebox.image_create(END,image=self.img[self.num])#img用全局变量，否则图片显示空白，且每张图都要单独用一个变量
 						self.messagebox.insert(END,'\n')
 					else:
