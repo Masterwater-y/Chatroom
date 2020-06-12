@@ -90,3 +90,33 @@ class Client:
 		file.close()
 		return file_route
 
+	def recv_icon(self,user):
+		filename=user+'.png'
+		filesize=int(self.recv_string())
+		print(filesize)
+		file_route=os.path.join('data','icon',filename)#本地存放的地址
+		recvd_size = 0 #定义接收了的文件大小
+		file = open(file_route,'wb')
+		#print ('stat receiving...')
+		while not recvd_size == filesize:
+			if filesize - recvd_size > 1024:
+				rdata = self.sk.recv(1024)
+				recvd_size += len(rdata)
+			else:
+				rdata = self.sk.recv(filesize - recvd_size) 
+				recvd_size = filesize
+			file.write(rdata)
+		file.close()
+		return file_route
+
+	def send_icon(self,path):
+		self.send_string(str(os.stat(path).st_size))
+		# with open(filepath,'rb') as fo: 这样发送文件有问题，发送完成后还会发一些东西过去
+		file=open(path,'rb')
+		while True:
+			filedata=file.read(1024)
+			if not filedata:
+				break
+			self.sk.sendall(filedata)
+		file.close()
+

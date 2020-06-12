@@ -6,8 +6,9 @@ import os
 import pymysql
 
 online_user=[]#list  dont use tuple 在线的socket
-sock_user={}#字典 存储socket对应的名字
-user_sock={}#名字对应socket
+sock_user={}#字典 存储socket对应的id
+user_sock={}#id对应socket
+user_nick={}#id对应昵称
 
 def send_string(sock,content): #socket通信发送数据，需要把数据转换为byte类型，并且先告知数据的长度
 	sock.sendall(len(bytes(content,encoding='utf-8')).to_bytes(4,byteorder='big'))#将发送的内容的长度以utf-8协议转换为4字节的byte byteorder是指字节序
@@ -95,10 +96,10 @@ def handle_register(sock):#处理注册请求
 	else:
 		sql='''
 		INSERT INTO userinfo 
-		(user,password)
+		(user,password,nickname)
 		VALUES
-		('%s','%s') 
-		'''%(user,key)
+		('%s','%s','%s') 
+		'''%(user,key,user)
 		try:
 			cursor.execute(sql)
 			db.commit()
@@ -138,15 +139,15 @@ def handle_private_send(sock):
 	send_string(target,user)#当前通话对象
 	send_string(target,content)
 	send_string(target,user)#发送者
-	send_string(sock,'2')
-	send_string(sock,sock_user[target])#当前通话对象
-	send_string(sock,content)
-	send_string(sock,user)#发送者
+	if sock_user[target]!=user:#不是发给自己
+		send_string(sock,'2')
+		send_string(sock,sock_user[target])#当前通话对象
+		send_string(sock,content)
+		send_string(sock,user)#发送者
 	print('发送成功')
 	print(divide)
 
 def recv_pic(sock):
-
 	target=recv_string(sock)
 	filename=recv_string(sock)#不含路径的文件名
 	filesize=int(recv_string(sock))
@@ -172,6 +173,43 @@ def recv_pic(sock):
 	file.close()
 	return target,filename,filesize,file_route
 	print ('图片接收完成')
+
+def recv_icon(sock):
+	user=sock_user[sock]
+	filename=user+'.png'#不含路径的文件名
+	filesize=int(recv_string(sock))
+	file_route=os.path.join('server','icon',filename)#服务器中存放的地址
+	recvd_size = 0 #定义接收了的文件大小
+	file = open(file_route,'wb')
+	print ('开始接收头像')
+	while not recvd_size == filesize:
+		if filesize - recvd_size > 1024:
+			rdata = sock.recv(1024)
+			recvd_size += len(rdata)
+		else:
+			rdata = sock.recv(filesize - recvd_size) 
+			recvd_size = filesize
+		file.write(rdata)
+	file.close()
+	return file_route
+	print ('头像接收完成')
+
+def send_icon(sock,user):
+	send_string(sock,user)
+	path=os.path.join('server','icon',user+'.png')
+	if not os.path.exists(path):
+		path=os.path.join('server','icon','default.png')
+	print(path)
+	send_string(sock,str(os.stat(path).st_size))
+	print(str(os.stat(path).st_size))
+	# with open(filepath,'rb') as fo: 这样发送文件有问题，发送完成后还会发一些东西过去
+	file=open(path,'rb')
+	while True:
+		filedata=file.read(1024)
+		if not filedata:
+			break
+		sock.sendall(filedata)
+	file.close()
 
 def handle_onlinelist():#处理更新在线列表请求
 	print(divide)
@@ -240,10 +278,70 @@ def handle_pic(sock):#处理发送图片请求
 	print('图片发送成功')
 	print(divide)
 
+def handle_gIcon(sock):#给登录者发送所有在线者的最新头像
+	for user in online_user:
+		send_string(sock,'#rIcon#')#refresh icon
+		username=sock_user[user]
+		send_icon(sock,username)
+	#print('user:',user)
+
+def handle_rIcon(sock):#向所有人发送头像更新者的新头像
+	username=sock_user[sock]
+	print(username)
+	recv_icon(sock)
+	for user in online_user:
+		send_string(user,'#rIcon#')
+		send_icon(user,username)
+		send_string(user,'#refresh#')
+
+def handle_Inform(sock):
+	user=recv_string(sock)
+	print('user=',user)
+	sql='''
+	SELECT * FROM userinfo where user='%s'
+	'''%(user)
+	try:
+		cursor.execute(sql)
+		result=cursor.fetchall()
+		send_string(sock,'#Inform#')
+		#print(type(result))
+		for row in result:
+			i=0
+			for value in row:
+				i+=1
+				if i==1 or i==3:
+					continue
+				print(str(value))
+				send_string(sock,str(value))
+	except Exception as e:
+		db.rollback()
+		print(e)
+		return
+
+def handle_rInform(sock):
+	user=sock_user[sock]
+	nickname=recv_string(sock)
+	age=recv_string(sock)
+	place=recv_string(sock)
+	sex=recv_string(sock)
+	sql='''
+	UPDATE userinfo SET nickname='%s',sex=%s,place='%s',age=%s WHERE user='%s' 
+	'''%(nickname,sex,place,age,user)
+	try:
+		cursor.execute(sql)
+		db.commit()
+		print('inform update succesfully')
+	except Exception as e:
+		db.rollback()
+		print(e)
+		return
+	#print('user:',user,' nickname:',nickname,' place:',place)
+
+
 def handle(sock,addr):#处理请求
 	try:
 		while True:
-			_type=recv_string(sock)#先接收一个4字节数字 表示请求的类型
+			_type=recv_string(sock)#请求的类型
 			if _type=='1':
 				handle_login(sock)
 			elif _type=='2':
@@ -256,6 +354,16 @@ def handle(sock,addr):#处理请求
 				handle_private_send(sock)
 			elif _type=='#Picture#':
 				handle_pic(sock)
+			elif _type=='#gIcon#':
+				print('here')
+				handle_gIcon(sock)
+			elif _type=='#rIcon#':
+				print('here')
+				handle_rIcon(sock)
+			elif _type=='#Inform#':#获取个人信息请求
+				handle_Inform(sock)
+			elif _type=='#rInform#':#更新个人信息请求
+				handle_rInform(sock)
 	except Exception as e:
 		print(str(addr) + " 连接异常，准备断开: " + str(e))
 	finally:#如果连接断开，将对应的人清除出列表

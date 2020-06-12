@@ -20,8 +20,8 @@ def gen_md5(key):
 
 def open_mainwindow(user):
 	global main_window
-	main_window=MainWindow(user,send_message,refresh,close_main_window,send_pic_func) #创建一个主界面的实例
-	Thread(target=recv_data).start() #为当前主界面接收数据新开一个线程
+	main_window=MainWindow(user,send_message,refresh,close_main_window,send_pic_func,send_icon_func,ask_inform,get_inform,send_inform) #创建一个主界面的实例
+	Thread(target=recv_data).start() #新开一个线程接收数据
 	main_window.show() #显示主界面
 
 
@@ -47,13 +47,29 @@ def mkdir(path):#若目录不存在则创建
 	if not isExist:
 		os.makedirs(path)
 
+def refresh_icon(user):
+	client.send_string('#gIcon#')#get icon
+
+def deficon(user):
+	path=os.path.join('data','icon',user+'.png')
+	if not os.path.exists(path):
+		refresh_icon(user)
+
 def loading(user):#初始化目录
+	deficon(user)#先加载头像
+	print('loading here')
 	path=os.path.join('data','file_recv',user)+'\\'
 	mkdir(path)
 	path='data\\record\\'+user+'\\'
 	mkdir(path)
 	with open(path+'!Group!.txt','a+',encoding='utf-8') as record:
 		pass
+
+def init():
+	path=os.path.join('data','icon')+'\\'
+	mkdir(path)
+	path=os.path.join('data','image')+'\\'
+	mkdir(path)
 
 def login():#登录按钮绑定的函数
 	print(divide)
@@ -105,6 +121,7 @@ def recv_data(): #客户端从服务器接收数据函数
 	while True:
 		try:
 			_type=client.recv_string() #服务器先发送一个数字来告知操作类型 0 message  1 onlinelist
+			print('type=',_type)
 			if _type=='':
 				continue
 			if _type=='0': #接收的是群聊消息
@@ -145,11 +162,74 @@ def recv_data(): #客户端从服务器接收数据函数
 				main_window.message_box_recv(target,content,sender)
 				client.refresh_req()#发送刷新请求
 				print(divide)
+			elif _type=='#rIcon#':#refresh icon
+				#print('here')
+				user=client.recv_string()
+				infile=client.recv_icon(user)
+				resize_icon(user,infile,120)
+				resize_icon(user,infile,35)
+			elif _type=='#Inform#':
+				print('inform get')
+				global inform_val
+				inform_val.clear()
+				for i in range(5):
+					content=client.recv_string()
+					if content=='4' and i==2:
+						content='未填写'
+					if content=='-1' and i==4:
+						content='未填写'
+					print('content:',content)
+					inform_val.append(content)
+				print('inform_val=',inform_val)
+			elif _type=='#refresh#':
+				user=main_window.send_name()
+				main_window.messagebox_history(user)
 
 		except Exception as e: #出现任何错误
 			print('接受服务器消息错误:'+str(e))#！！！不加break退出会崩溃
 			break
 
+def trans_inform(_type,val):
+	if _type==0:#sex
+		if val=='男':
+			return('1')
+		elif val=='女':
+			return('2')
+		else:
+			return('3')
+		return
+
+
+def send_inform(values):
+	client.send_string('#rInform#')
+	i=0
+	for value in values:
+		final=value
+		if i==1:
+			final=trans_inform(0,value)
+		print('sending inform:',final)
+		client.send_string(final)
+		i+=1
+	pass
+
+def send_icon_func(user,path):#发送头像函数
+	client.send_string('#rIcon#')
+	client.send_icon(path)
+
+def resize_icon(user,infile, x_s):#缩小头像尺寸，一大一小
+	filename=os.path.basename(infile)
+	img = Img.open(infile)
+	x, y = img.size
+	y_s = x_s
+	out = img.resize((x_s, y_s), Img.ANTIALIAS)
+	tag=None
+	if x_s==35:
+		tag='s'
+	elif x_s==120:
+		tag='b'
+	outfile =os.path.join('data','icon',user+tag+'.png')
+	out.save(outfile)
+	return(outfile,False)
 
 def send_message(): #主界面发送消息 函数
 	content=main_window.getinput() #获取输入框的内容
@@ -161,6 +241,16 @@ def send_message(): #主界面发送消息 函数
 		else:
 			client.private_sending(target,content) 
 		main_window.input_box_clean() #发送之后清空输入框
+
+def ask_inform(user):
+	client.send_string('#Inform#')
+	client.send_string(user)
+
+def get_inform():
+	print('get_inform:')
+	global inform_val
+	print(inform_val)
+	return inform_val
 
 def reg_back():# 注册界面返回按钮绑定的函数
 	reg_window.close()
@@ -195,6 +285,8 @@ def register(): #注册按钮绑定的函数
 	
 
 divide=('---------------------')#分割线
+init()
+inform_val=[]
 login_window=LoginWindow(login,register,close_login_window) # 创建登录窗口 括号里传入三个上面定义的函数
 client=Client() #建立客户端socket
 login_window.show()

@@ -6,9 +6,10 @@ import time
 import os
 from PIL import ImageTk as itk
 from PIL import Image as Img
+from Person import Person
 
 class MainWindow():
-	def __init__(self,username,send_func,refresh_func,close_func,send_pic_func):
+	def __init__(self,username,send_func,refresh_func,close_func,send_pic_func,send_icon_func,ask_inform_func,get_inform_func,send_inform_func):
 		self.main_window=None#=Tk()不直接写避免出现多个窗口
 		self.online_list=None
 		self.send_func=send_func
@@ -24,6 +25,12 @@ class MainWindow():
 		self.img=[]#存储消息记录中的图片
 		self.num=-1
 		self.send_pic_btn=None
+		self.send_icon_func=send_icon_func
+		self.get_inform_func=get_inform_func
+		self.ask_inform_func=ask_inform_func
+		self.send_inform_func=send_inform_func
+		self.nick_id={}
+
 	def show(self):
 		self.main_window=Tk()
 		self.main_window.configure(bg='white')
@@ -39,13 +46,13 @@ class MainWindow():
 		self.main_window.title('Chatroom')
 		self.title_var=StringVar()
 		self.title_var.set('!Group!')
-		top_img=itk.PhotoImage(file='image/main_top.jpg')
-		#bg_canva=Canvas(self.main_window,width=main_width,height=40)
-		#bg_canva.create_image(main_width/2,main_height/2,image=top_img)
-		#bg_canva.create_text(300,20,textvariable=self.title_var)
-		#bg_canva.grid(row=0,column=0)
 
-		self.Title_Label=Label(self.main_window,cursor='hand2',image=top_img,compound='center',textvariable=self.title_var,font=('黑体',18),fg='white').grid(row=0,column=0,columnspan=2)
+		top_img=itk.PhotoImage(file='image/main_top.jpg')
+		self.Title_Label=Label(self.main_window,cursor='hand2',image=top_img,compound='center',textvariable=self.title_var,font=('黑体',18),fg='white')
+		Tips(self.Title_Label,'查看个人资料')
+		self.Title_Label.bind('<Button-1>',self.bind_toplabel)
+		self.Title_Label.grid(row=0,column=0,columnspan=2)
+
 		self.online_list=Listbox(self.main_window,height=30,bg='white',fg='black',font=('宋体',12))
 		self.online_list.grid(row=1, column=0, rowspan=2,sticky=N + S, padx=(0,10), pady=(0, 5))
 		online_list_bar=Scrollbar(self.main_window)
@@ -53,10 +60,10 @@ class MainWindow():
 		online_list_bar['command'] = self.online_list.yview#绑定滚动条和列表
 		self.online_list['yscrollcommand'] = online_list_bar.set
 
-		self.messagebox=Text(self.main_window,width=90,state=DISABLED,borderwidth=0,height=20)  #消息记录框 常态下无法输入
+		self.messagebox=Text(self.main_window,width=90,state=DISABLED,borderwidth=0.5,height=20)  #消息记录框 常态下无法输入
 		self.messagebox_history(self.curtag)
 
-		self.messagebox.grid(row=1,column=1,sticky=N+S,padx=(0,5))
+		self.messagebox.grid(row=1,column=1,sticky=N+S+W,padx=(5,5))
 		messagebox_bar=Scrollbar(self.main_window)
 		messagebox_bar['command']=self.messagebox.yview
 		self.messagebox['yscrollcommand']=messagebox_bar.set
@@ -95,8 +102,14 @@ class MainWindow():
 		self.online_list.bind('<Double Button-1>',self.change_target)
 		self.main_window.bind('<Return>',self.bind_send)
 
-
 		self.main_window.mainloop()
+
+	def bind_toplabel(self,event):
+		if self.curtag=='!Group!':
+			return
+		flag=self.curtag==self.username
+		print(self.curtag,' ',self.username)
+		person=Person(self.main_window,self.curtag,self.send_icon_func,flag,self.ask_inform_func,self.get_inform_func,self.send_inform_func)
 
 	def refresh(self,name):#刷新在线列表
 		self.online_list.delete(0,END)#0 END表示从第一个到最后一个
@@ -127,7 +140,7 @@ class MainWindow():
 		path=filedialog.askopenfilename()
 		return path,self.curtag
 
-	def deal_repeat(self,pos):#处理文件名重复,防止影响历史记录读取
+	def deal_repeat(self,pos):#处理未读消息
 		origin=self.online_list.get(pos)
 		pos1=-1
 		for i in range(len(origin)-1,-1,-1):
@@ -144,8 +157,8 @@ class MainWindow():
 	def change_target(self,event):# 切换聊天对象   bind会返回event
 		pos=self.online_list.curselection()[0]#返回的是元组
 		self.deal_repeat(pos)
-		if self.curtag==self.username:
-			return
+		#if self.curtag==self.username:
+			#return
 		self.title_var.set(self.curtag)
 		path=self.getfile(self.username,self.curtag)
 		flag=os.path.isfile(path)
@@ -165,14 +178,21 @@ class MainWindow():
 		file_name+=target+'.txt'
 		return file_name
 
+	def geticon(self,user):#获取头像
+		file_name=os.path.join('data','icon',user+'s.png')
+		if not os.path.exists(file_name):
+			file_name=os.path.join('image','default_icons.png')
+		return file_name
+
 	def message_box_recv(self,target,content,sender):#消息记录框新增内容
 		#self.messagebox.config(state=NORMAL)#先将消息记录框从只读状态变为可修改状态
+		now=self.curtag
 		head=sender+'  '+time.strftime("%Y-%m-%d %X")#一个显示当前日期的方法，可以百度time.strftime
 		file_name=self.getfile(self.username,target)
 		with open(file_name,'a',encoding='utf-8') as record:
 			record.write(sender+' '+head+'\n')
-			record.write(' '+content+'\n')
-		now=self.curtag
+			record.write(' '+content)
+
 		if now==target:
 			self.messagebox_history(now)
 			return
@@ -184,7 +204,6 @@ class MainWindow():
 			return
 		self.unread.setdefault(sender,0)
 		self.unread[sender]=self.unread[sender]+1
-		#print(self.unread)
 
 	def messagebox_history(self,target):#读取消息记录并显示
 		self.messagebox.config(state=NORMAL)
@@ -194,18 +213,24 @@ class MainWindow():
 		with open(file_name,'r',encoding='utf-8') as record:
 			for content in record:
 				pos=content.find(' ',0)
+				print('pos=',pos)
+				if pos==-1:#莫名多出的空白行
+					continue
 				user=content[0:pos]
 				content=content[pos+1:].rstrip('\n')
 				flag=os.path.exists(content)#如果内容是路径就判定为图片
-				if pos==0:
+				if pos==0:#判断是记录头还是记录
 					if flag:
 						self.num=self.num+1
 						self.img.append(itk.PhotoImage(file=content))
 						self.messagebox.image_create(END,image=self.img[self.num])#img用全局变量，否则图片显示空白，且每张图都要单独用一个变量
-						#self.messagebox.insert(END,'\n')
+						self.messagebox.insert(END,'\n')
 					else:
-						self.messagebox.insert(END,content+'\n')
+						self.messagebox.insert(END,'      '+content+'\n')
 					continue
+				self.num+=1
+				self.img.append(itk.PhotoImage(file=self.geticon(user)))
+				self.messagebox.image_create(END,image=self.img[self.num])
 				if user==self.username:#如果是本人发的就是绿色，否则是蓝色
 					self.messagebox.insert(END,content+'\n','green')
 				else:
