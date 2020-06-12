@@ -174,7 +174,7 @@ def recv_pic(sock):
 	return target,filename,filesize,file_route
 	print ('图片接收完成')
 
-def recv_icon(sock):
+def recv_icon(sock):#获取头像
 	user=sock_user[sock]
 	filename=user+'.png'#不含路径的文件名
 	filesize=int(recv_string(sock))
@@ -194,7 +194,7 @@ def recv_icon(sock):
 	return file_route
 	print ('头像接收完成')
 
-def send_icon(sock,user):
+def send_icon(sock,user):#发送头像
 	send_string(sock,user)
 	path=os.path.join('server','icon',user+'.png')
 	if not os.path.exists(path):
@@ -236,7 +236,7 @@ def handle_pic(sock):#处理发送图片请求
 	filesize=str(filesize)#转为str传输
 	print('图片发送目标:{}, 文件名:{}, 文件大小:{}, 服务器存储路径:{}'.format(targets,filename,filesize,file_route))
 	if targets=='!Group!':
-		for user in online_user:
+		for user in online_user:#群聊给每个人都发
 			send_string(user,'#Picture#')
 			send_string(user,sender)
 			send_string(user,'!Group!')
@@ -250,7 +250,7 @@ def handle_pic(sock):#处理发送图片请求
 				user.sendall(filedata)
 			file.close()
 	else:
-		target=user_sock[targets]
+		target=user_sock[targets]#私聊只发对象
 		send_string(target,'#Picture#')
 		send_string(target,sender)
 		send_string(target,sock_user[sock])
@@ -294,7 +294,7 @@ def handle_rIcon(sock):#向所有人发送头像更新者的新头像
 		send_icon(user,username)
 		send_string(user,'#refresh#')
 
-def handle_Inform(sock):
+def handle_Inform(sock):#发送个人信息
 	user=recv_string(sock)
 	print('user=',user)
 	sql='''
@@ -318,12 +318,12 @@ def handle_Inform(sock):
 		print(e)
 		return
 
-def handle_rInform(sock):
+def handle_rInform(sock):#接收新个人信息
 	user=sock_user[sock]
 	nickname=recv_string(sock)
-	age=recv_string(sock)
-	place=recv_string(sock)
 	sex=recv_string(sock)
+	place=recv_string(sock)
+	age=recv_string(sock)
 	sql='''
 	UPDATE userinfo SET nickname='%s',sex=%s,place='%s',age=%s WHERE user='%s' 
 	'''%(nickname,sex,place,age,user)
@@ -335,6 +335,7 @@ def handle_rInform(sock):
 		db.rollback()
 		print(e)
 		return
+	#get_nickname(user)
 	#print('user:',user,' nickname:',nickname,' place:',place)
 
 
@@ -376,7 +377,7 @@ def handle(sock,addr):#处理请求
 			print(str(addr)+'连接关闭异常')
 			#handle onlinelist
 
-def connect_db():
+def connect_db():#连接数据库
 	global db,cursor
 	db = pymysql.connect(
 	host='localhost',

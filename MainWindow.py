@@ -213,7 +213,6 @@ class MainWindow():
 		with open(file_name,'r',encoding='utf-8') as record:
 			for content in record:
 				pos=content.find(' ',0)
-				print('pos=',pos)
 				if pos==-1:#莫名多出的空白行
 					continue
 				user=content[0:pos]

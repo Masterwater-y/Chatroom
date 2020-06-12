@@ -56,14 +56,18 @@ def deficon(user):
 		refresh_icon(user)
 
 def loading(user):#初始化目录
+	print()
+	print(divide)
+	print('初始化目录')
 	deficon(user)#先加载头像
-	print('loading here')
 	path=os.path.join('data','file_recv',user)+'\\'
 	mkdir(path)
 	path='data\\record\\'+user+'\\'
 	mkdir(path)
 	with open(path+'!Group!.txt','a+',encoding='utf-8') as record:
 		pass
+	print(divide)
+	print()
 
 def init():
 	path=os.path.join('data','icon')+'\\'
@@ -79,6 +83,8 @@ def login():#登录按钮绑定的函数
 	result=client.check_login(user,key)#登录验证结果
 	if result=='0':#验证成功
 		print('登录成功')
+		print(divide)
+		print()
 		loading(user)
 		login_window.close()#先关闭登录窗口 再开mainwindow，否则无法关闭登录窗口
 		open_mainwindow(user) #打开主界面的函数
@@ -89,6 +95,7 @@ def login():#登录按钮绑定的函数
 	else:
 		messagebox.showerror(title="错误", message="未知错误")
 	print(divide)
+	print()
 
 def resize_image(infile, x_s=400):#缩小图片尺寸
 	filename=os.path.basename(infile)
@@ -121,12 +128,10 @@ def recv_data(): #客户端从服务器接收数据函数
 	while True:
 		try:
 			_type=client.recv_string() #服务器先发送一个数字来告知操作类型 0 message  1 onlinelist
-			print('type=',_type)
 			if _type=='':
 				continue
 			if _type=='0': #接收的是群聊消息
-				print(divide)
-				print('接收群聊消息')
+				reply_form('接收群聊消息')
 				target=client.recv_string()#存放消息记录的对象
 				content=client.recv_string()
 				sender=client.recv_string()#发送者
@@ -134,42 +139,36 @@ def recv_data(): #客户端从服务器接收数据函数
 				client.refresh_req()
 				print(divide)
 			elif _type=='1':#接收的是刷新在线列表
-				print(divide)
-				print('刷新在线列表')
+				reply_form('刷新在线列表')
 				name=[]
 				num=int(client.recv_string())#在线人数
 				for i in range(num): #接收在线人员名单
 					name.append(client.recv_string())
 				main_window.refresh(name)
-				print(divide)
 			elif _type=='2':
-				print(divide)
-				print('接收私聊消息')
+				reply_form('接收私聊消息')
 				target=client.recv_string()#存放消息记录的对象
 				content=client.recv_string()
 				sender=client.recv_string()#发送者
 				main_window.message_box_recv(target,content,sender)
 				client.refresh_req()
-				print(divide)
 			elif _type=='#Picture#':
-				print(divide)
-				print('接收图片')
+				reply_form('接收图片')
 				sender=client.recv_string()#发送者
 				target=client.recv_string()#存放消息记录的对象
 				user=main_window.get_name()#当前窗口的用户名
 				content=client.recv_pic(user,target)#从服务器下载图片
-				print(content)
+				print('图片存放地址:',content)
 				main_window.message_box_recv(target,content,sender)
 				client.refresh_req()#发送刷新请求
-				print(divide)
 			elif _type=='#rIcon#':#refresh icon
-				#print('here')
+				reply_form('接收新头像')
 				user=client.recv_string()
 				infile=client.recv_icon(user)
 				resize_icon(user,infile,120)
 				resize_icon(user,infile,35)
 			elif _type=='#Inform#':
-				print('inform get')
+				reply_form('接收个人信息')
 				global inform_val
 				inform_val.clear()
 				for i in range(5):
@@ -178,10 +177,9 @@ def recv_data(): #客户端从服务器接收数据函数
 						content='未填写'
 					if content=='-1' and i==4:
 						content='未填写'
-					print('content:',content)
 					inform_val.append(content)
-				print('inform_val=',inform_val)
 			elif _type=='#refresh#':
+				reply_form('刷新聊天记录')
 				user=main_window.send_name()
 				main_window.messagebox_history(user)
 
@@ -189,7 +187,7 @@ def recv_data(): #客户端从服务器接收数据函数
 			print('接受服务器消息错误:'+str(e))#！！！不加break退出会崩溃
 			break
 
-def trans_inform(_type,val):
+def trans_inform(_type,val):#个人信息
 	if _type==0:#sex
 		if val=='男':
 			return('1')
@@ -199,18 +197,24 @@ def trans_inform(_type,val):
 			return('3')
 		return
 
+def reply_form(val):
+	print()
+	print(divide)
+	print(val)
+	print(divide)
+	print()
 
 def send_inform(values):
+	reply_form('更新个人信息')
 	client.send_string('#rInform#')
 	i=0
 	for value in values:
 		final=value
 		if i==1:
 			final=trans_inform(0,value)
-		print('sending inform:',final)
+		print('发送个人信息:',final)
 		client.send_string(final)
 		i+=1
-	pass
 
 def send_icon_func(user,path):#发送头像函数
 	client.send_string('#rIcon#')
@@ -233,7 +237,6 @@ def resize_icon(user,infile, x_s):#缩小头像尺寸，一大一小
 
 def send_message(): #主界面发送消息 函数
 	content=main_window.getinput() #获取输入框的内容
-	#print('content:',content)
 	if content!=-1:#-1为空
 		target=main_window.send_name()
 		if target=='!Group!':
@@ -247,9 +250,7 @@ def ask_inform(user):
 	client.send_string(user)
 
 def get_inform():
-	print('get_inform:')
 	global inform_val
-	print(inform_val)
 	return inform_val
 
 def reg_back():# 注册界面返回按钮绑定的函数
