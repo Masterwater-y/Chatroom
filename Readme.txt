@@ -1,13 +1,13 @@
 目前只在本地测试，可以通过修改server和client中的IP地址实现远程连接
 使用说明：
-（1）先运行Server.py,再运行Main.py
-（2）最左侧为在线列表，双击列表中的项目可以发起私聊，列表中#Group#为所有在线人可见的聊天室
-（3）支持回车键快捷发送消息和确认登录、注册
-（4）当运行server.py时出现【Winerror 10054】远程主机强迫关闭一个现有连接，先运行solve.py再重新运行server.py
+（1）在项目的根目录开启cmd，运行 pip install -r requirements.txt
+（2）先运行Server.py,再运行Main.py
+（3）最左侧为在线列表，双击列表中的项目可以发起私聊，列表中#Group#为所有在线人可见的聊天室
+（4）支持回车键快捷发送消息和确认登录、注册
+（5）数据库需要自行调整参数连接
 
 需要安装的第三方模块（Python3）：
 PIL
-tkinter
 服务器（server.py）需要pymysql模块 且本地需要安装mysql
 
 更新日志
