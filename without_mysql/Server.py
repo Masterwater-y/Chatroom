@@ -3,7 +3,6 @@ from threading import Thread
 import math
 import struct
 import os
-import pymysql
 
 online_user=[]#list  dont use tuple 在线的socket
 sock_user={}#字典 存储socket对应的id
@@ -149,16 +148,16 @@ def recv_pic(sock):
 	filesize=int(recv_string(sock))
 	file_route=os.path.join('server','data',sock_user[sock],filename)#服务器中存放的地址
 	i=0
-	while os.path.exists(file_route):
+	while os.path.exists(file_route):#防止文件名重复被覆盖
 		i+=1
 		for j in range(len(file_route)-1,-1,-1):
 			if file_route[j]=='.':
 				break
 		file_route=file_route[0:j]+'('+str(i)+')'+file_route[j:]
-	recvd_size = 0 #定义接收了的文件大小
+	recvd_size = 0 #接收了的文件大小
 	file = open(file_route,'wb')
 	print ('开始接收图片')
-	while not recvd_size == filesize:
+	while not recvd_size == filesize:#recv是阻塞的，接收完要停止
 		if filesize - recvd_size > 1024:
 			rdata = sock.recv(1024)
 			recvd_size += len(rdata)
@@ -198,7 +197,6 @@ def send_icon(sock,user):#发送头像
 	print(path)
 	send_string(sock,str(os.stat(path).st_size))
 	print(str(os.stat(path).st_size))
-	# with open(filepath,'rb') as fo: 这样发送文件有问题，发送完成后还会发一些东西过去
 	file=open(path,'rb')
 	while True:
 		filedata=file.read(1024)
@@ -373,5 +371,5 @@ try:
 		Thread(target=handle,args=(sock, addr)).start()#给监听到的每一个socket新建一个线程运行handle
 except Exception as e:
 	sk.close()
-	cursor.close()
-	db.close()
+	#cursor.close()
+	#db.close()
