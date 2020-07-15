@@ -45,7 +45,7 @@ class Person(Toplevel):#是顶级窗口的子类
 		self.inform=[]
 		self.place_longt=None
 		self.ask_inform_func(self.curtag)#向服务器发送获取个人信息请求
-		time.sleep(0.1)#给时间下载个人信息，否则后面渲染出错
+		time.sleep(2)#给时间下载个人信息，否则后面渲染出错
 		self.inform=self.get_inform_func()
 		self.inform[2]=self.trans_inform(0,self.inform[2])
 		divide='---------------------'

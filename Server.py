@@ -3,7 +3,6 @@ from threading import Thread
 import math
 import struct
 import os
-import pymysql
 
 online_user=[]#list  dont use tuple 在线的socket
 sock_user={}#字典 存储socket对应的id
@@ -29,22 +28,34 @@ def check_login(user,key):#服务器检查登录
 	is_user=True #第一行为账号，第二行为密码，判断当前行是否为账号
 	flag=False
 	i=0
-	sql='''
-	SELECT * FROM userinfo where user='%s' and password='%s'
-	'''%(user,key)
-	#print(sql)
-	flag=cursor.execute(sql)
-	if flag:
-		return(True)
-	else:
-		return(False)
+	with open('server\\data\\user.in','r',encoding='utf-8') as data:
+		for content in data:
+			content=content.replace('\n','')
+			i=i+1
+			#if i==1:#从第一行开始存储会出错，未找到原因只好从第二行开始
+				#continue
+			if (is_user) and (content==user):
+				flag=True
+			if (not is_user) and flag:
+				return(content==key)
+			is_user=not is_user
+	return(False)
 
 def loading(sock):
-	path=os.path.join('server','data',sock_user[sock])
+	user=sock_user[sock]
+	path=os.path.join('server','data',user)
 	isExist=os.path.exists(path)
 	if not isExist:
 		print('为新用户生成文件夹:',path)
 		os.makedirs(path)
+	with open(path+'/inform.txt','a+',encoding='utf-8') as inform:
+		flag=os.path.getsize(path+'/inform.txt')
+		if not flag:
+			inform.write(user+'\n')
+			inform.write(user+'\n')
+			inform.write('4'+'\n')
+			inform.write('未填写'+'\n')
+			inform.write('-1'+'\n')
 
 def handle_login(sock): #处理登录请求
 	print(divide)
@@ -64,6 +75,10 @@ def handle_login(sock): #处理登录请求
 			send_string(sock,'0')#0为成功
 			handle_onlinelist()#更新在线列表
 			loading(sock)
+			for users in online_user:
+				send_string(users,'#rIcon#')
+				send_icon(users,user)
+				send_string(users,'#refresh#')
 		else:
 			send_string(sock,'2')#已登录
 			print(user,':已登录')
@@ -78,37 +93,21 @@ def handle_register(sock):#处理注册请求
 	user=recv_string(sock)
 	key=recv_string(sock)
 	is_user=True
-	sql='''
-	SELECT * FROM userinfo WHERE user='%s' 
-	'''%(user)
-	try:
-		Flag=cursor.execute(sql)
-	except Exception as e:
-		db.rollback()
-		print(e)
-		send_string(sock,'2')
-		return
-	if Flag:
-		send_string(sock,'1')
-		print(user+'已被注册')
-		print(divide)
-		return#已被注册
-	else:
-		sql='''
-		INSERT INTO userinfo 
-		(user,password,nickname)
-		VALUES
-		('%s','%s','%s') 
-		'''%(user,key,user)
-		try:
-			cursor.execute(sql)
-			db.commit()
-			print('注册成功')
-		except Exception as e:
-			db.rollback()
-			print(e)
-			send_string(sock,'2')
-			return
+	with open('server\\data\\user.in','a',encoding='utf-8') as data:
+		pass
+	with open('server\\data\\user.in','r',encoding='utf-8') as data:
+		for content in data:
+			content=content.rstrip('\n')
+			if is_user and content==user:
+				Flag=False
+				send_string(sock,'1')
+				print(user+'已被注册')
+				print(divide)
+				return#已被注册
+			is_user=not is_user
+	with open('server\\data\\user.in','a',encoding='utf-8') as data:
+		data.write(user+'\n')
+		data.write(key+'\n')
 	send_string(sock,'0')
 	print(user+':注册成功')#0 注册成功-
 	print(divide)
@@ -153,16 +152,16 @@ def recv_pic(sock):
 	filesize=int(recv_string(sock))
 	file_route=os.path.join('server','data',sock_user[sock],filename)#服务器中存放的地址
 	i=0
-	while os.path.exists(file_route):
+	while os.path.exists(file_route):#防止文件名重复被覆盖
 		i+=1
 		for j in range(len(file_route)-1,-1,-1):
 			if file_route[j]=='.':
 				break
 		file_route=file_route[0:j]+'('+str(i)+')'+file_route[j:]
-	recvd_size = 0 #定义接收了的文件大小
+	recvd_size = 0 #接收了的文件大小
 	file = open(file_route,'wb')
 	print ('开始接收图片')
-	while not recvd_size == filesize:
+	while not recvd_size == filesize:#recv是阻塞的，接收完要停止
 		if filesize - recvd_size > 1024:
 			rdata = sock.recv(1024)
 			recvd_size += len(rdata)
@@ -202,7 +201,6 @@ def send_icon(sock,user):#发送头像
 	print(path)
 	send_string(sock,str(os.stat(path).st_size))
 	print(str(os.stat(path).st_size))
-	# with open(filepath,'rb') as fo: 这样发送文件有问题，发送完成后还会发一些东西过去
 	file=open(path,'rb')
 	while True:
 		filedata=file.read(1024)
@@ -296,47 +294,24 @@ def handle_rIcon(sock):#向所有人发送头像更新者的新头像
 
 def handle_Inform(sock):#发送个人信息
 	user=recv_string(sock)
+	path=os.path.join('server','data',user)
 	print('user=',user)
-	sql='''
-	SELECT * FROM userinfo where user='%s'
-	'''%(user)
-	try:
-		cursor.execute(sql)
-		result=cursor.fetchall()
-		send_string(sock,'#Inform#')
-		#print(type(result))
-		for row in result:
-			i=0
-			for value in row:
-				i+=1
-				if i==1 or i==3:
-					continue
-				print(str(value))
-				send_string(sock,str(value))
-	except Exception as e:
-		db.rollback()
-		print(e)
-		return
+	send_string(sock,'#Inform#')
+	with open(path+'/inform.txt','r',encoding='utf-8') as inform:
+		for content in inform:
+			content=content.rstrip('\n')
+			send_string(sock,content)
 
 def handle_rInform(sock):#接收新个人信息
 	user=sock_user[sock]
-	nickname=recv_string(sock)
-	sex=recv_string(sock)
-	place=recv_string(sock)
-	age=recv_string(sock)
-	sql='''
-	UPDATE userinfo SET nickname='%s',sex=%s,place='%s',age=%s WHERE user='%s' 
-	'''%(nickname,sex,place,age,user)
-	try:
-		cursor.execute(sql)
-		db.commit()
-		print('inform update succesfully')
-	except Exception as e:
-		db.rollback()
-		print(e)
-		return
-	#get_nickname(user)
-	#print('user:',user,' nickname:',nickname,' place:',place)
+	path=os.path.join('server','data',user)
+	val=[]
+	val.append(user)
+	for i in range(4):
+		val.append(recv_string(sock))
+	with open(path+'/inform.txt','w',encoding='utf-8') as inform:
+		for content in val:
+			inform.write(content+'\n')
 
 
 def handle(sock,addr):#处理请求
@@ -387,11 +362,11 @@ def connect_db():#连接数据库
 	cursor=db.cursor()
 	cursor.execute('use Chatroom')
 
-connect_db()
+#connect_db()
 sk=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0)#使用TCP协议
 divide='------------------------'#分割线
 #sk.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sk.bind(('127.0.0.1',13333))#socket绑定到ip地址 127.0.0.1表示本地，13333是端口
+sk.bind(('172.18.28.174',1234))#socket绑定到ip地址 172.18.28.174是租借的阿里云的私有ip
 sk.listen(10)#最大连接数
 print("服务器启动成功，开始监听...")
 try:
@@ -400,5 +375,5 @@ try:
 		Thread(target=handle,args=(sock, addr)).start()#给监听到的每一个socket新建一个线程运行handle
 except Exception as e:
 	sk.close()
-	cursor.close()
-	db.close()
+	#cursor.close()
+	#db.close()

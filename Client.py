@@ -3,9 +3,9 @@ import math
 import os
 class Client:
 	def __init__(self): 
-		self.sk=socket.socket()#为实例创建一个socket
+		self.sk=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0)#为实例创建一个socket
 		#self.sk.settimeout(600)
-		self.sk.connect(('127.0.0.1',13333))#绑定到服务器和对应端口
+		self.sk.connect(('47.106.11.170',1234))#绑定到服务器和对应端口，阿里云的公网ip
 		#self.filesize=0
 
 	def send_string(self,content):#先发送内容长度，再发送内容

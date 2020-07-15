@@ -156,7 +156,7 @@ class MainWindow():
 
 	def change_target(self,event):# 切换聊天对象   bind会返回event
 		pos=self.online_list.curselection()[0]#返回的是元组
-		self.deal_repeat(pos)
+		self.deal_repeat(pos)#把后面的未读消息处理掉
 		#if self.curtag==self.username:
 			#return
 		self.title_var.set(self.curtag)
